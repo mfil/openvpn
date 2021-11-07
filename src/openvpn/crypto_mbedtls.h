@@ -149,7 +149,12 @@ mbed_log_func_line_lite(unsigned int flags, int errval,
 static inline bool
 cipher_kt_var_key_size(const cipher_kt_t *cipher)
 {
-    return cipher->flags & MBEDTLS_CIPHER_VARIABLE_KEY_LEN;
+#if MBEDTLS_VERSION_NUMBER == 0x03000000
+	int flags = cipher->MBEDTLS_PRIVATE(flags);
+#else
+	int flags = cipher->flags;
+#endif
+    return flags & MBEDTLS_CIPHER_VARIABLE_KEY_LEN;
 }
 
 #endif /* CRYPTO_MBEDTLS_H_ */
