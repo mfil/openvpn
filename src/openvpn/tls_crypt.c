@@ -44,6 +44,10 @@ const char *tls_crypt_v2_srv_pem_name = "OpenVPN tls-crypt-v2 server key";
 static const uint8_t TLS_CRYPT_METADATA_TYPE_USER = 0x00;
 /** Metadata contains a 64-bit unix timestamp in network byte order */
 static const uint8_t TLS_CRYPT_METADATA_TYPE_TIMESTAMP = 0x01;
+/** Metadata contains a 64-bit unix timestamp in network byte order,
+ *  and an SSL certificate serial number of up to 20 bytes
+ */
+static const uint8_t TLS_CRYPT_METADATA_TYPE_TIME_AND_SERIAL = 0x02;
 
 static struct key_type
 tls_crypt_kt(void)
@@ -696,6 +700,7 @@ tls_crypt_v2_write_server_key_file(const char *filename)
 
 void
 tls_crypt_v2_write_client_key_file(const char *filename, const char *b64_metadata,
+                                   const char *serial_number, size_t serial_number_len,
                                    const char *server_key_file, bool server_key_inline)
 {
     struct gc_arena gc = gc_new();
@@ -703,6 +708,12 @@ tls_crypt_v2_write_client_key_file(const char *filename, const char *b64_metadat
     struct buffer client_key_pem = { 0 };
     struct buffer dst = alloc_buf_gc(TLS_CRYPT_V2_CLIENT_KEY_LEN + TLS_CRYPT_V2_MAX_WKC_LEN, &gc);
     struct key2 client_key = { .n = 2 };
+
+    if (b64_metadata && serial_number)
+    {
+        msg(M_FATAL, "ERROR: metadata source conflict. Specify either user-defined metadata or a serial number, not both");
+        goto cleanup;
+    }
 
     if (!rand_bytes((void *)client_key.keys, sizeof(client_key.keys)))
     {
@@ -731,8 +742,19 @@ tls_crypt_v2_write_client_key_file(const char *filename, const char *b64_metadat
         }
         ASSERT(buf_inc_len(&metadata, decoded_len));
     }
+    else if (serial_number)
+    {
+        size_t buf_size = 1 + sizeof(int64_t) + serial_number_len;
+
+        metadata = alloc_buf_gc(buf_size, &gc);
+        int64_t timestamp = htonll((uint64_t)now);
+        ASSERT(buf_write(&metadata, &TLS_CRYPT_METADATA_TYPE_TIME_AND_SERIAL, 1));
+        ASSERT(buf_write(&metadata, &timestamp, sizeof(timestamp)));
+        ASSERT(buf_write(&metadata, serial_number, serial_number_len));
+    }
     else
     {
+
         metadata = alloc_buf_gc(1 + sizeof(int64_t), &gc);
         int64_t timestamp = htonll((uint64_t)now);
         ASSERT(buf_write(&metadata, &TLS_CRYPT_METADATA_TYPE_TIMESTAMP, 1));

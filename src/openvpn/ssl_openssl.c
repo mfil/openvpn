@@ -2713,4 +2713,28 @@ unload_xkey_provider(void)
     tls_libctx = NULL;
 }
 
+int ssl_get_serial_number_from_cert_file(const char *path, struct buffer *out, struct gc_arena *gc)
+{
+    BIO *file = BIO_new_file((char *)path, "r");
+    if (file == NULL)
+    {
+        return 1;
+    }
+
+    X509 *cert = PEM_read_bio_X509(file, NULL, NULL, NULL);
+    if (cert == NULL)
+    {
+        BIO_free(file);
+        return 1;
+    }
+    const ASN1_INTEGER *serial = X509_get0_serialNumber(cert);
+
+    *out = alloc_buf_gc(serial->length, gc);
+    ASSERT(buf_write(out, serial->data, serial->length));
+
+    X509_free(cert);
+    BIO_free(file);
+    return 0;
+}
+
 #endif /* defined(ENABLE_CRYPTO_OPENSSL) */

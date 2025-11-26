@@ -674,6 +674,9 @@ struct options
     const char *tls_crypt_v2_file;
     bool tls_crypt_v2_file_inline;
 
+    /* Client certificate with serial number for tls-verify-v2 client key. */
+    const char *tls_crypt_v2_client_cert;
+
     const char *tls_crypt_v2_metadata;
 
     const char *tls_crypt_v2_verify_script;

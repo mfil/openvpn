@@ -222,12 +222,17 @@ void tls_crypt_v2_write_server_key_file(const char *filename);
  *
  * @param filename          Filename of the client key file to create.
  * @param b64_metadata      Base64 metadata to be included in the client key.
+ * @param serial_number     If not NULL, store this serial number in the metadata
+ *                          along with the timestamp. Must be NULL if b64_metadata
+ *                          is not NULL.
+ * @param serial_number_len Length of serial_number.
  * @param key_file          File path of the server key to use for wrapping the
  *                          client key or the key itself if key_inline is true.
  * @param key_inline        True if key_file contains an inline key, False
  *                          otherwise.
  */
 void tls_crypt_v2_write_client_key_file(const char *filename, const char *b64_metadata,
+                                        const char *serial_number, size_t serial_number_len,
                                         const char *key_file, bool key_inline);
 
 /** @} */

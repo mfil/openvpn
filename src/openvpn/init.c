@@ -1063,6 +1063,7 @@ do_genkey(const struct options *options)
         }
 
         tls_crypt_v2_write_client_key_file(options->genkey_filename, options->genkey_extra_data,
+                                           NULL, 0,
                                            options->tls_crypt_v2_file,
                                            options->tls_crypt_v2_file_inline);
         return true;

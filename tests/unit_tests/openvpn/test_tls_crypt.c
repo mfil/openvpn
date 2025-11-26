@@ -96,6 +96,23 @@ static const char *test_client_key_metadata =
     "pV62MPQdBo+1lcsjDCJVQA6XUyltas4BKQ==\n"
     "-----END OpenVPN tls-crypt-v2 client key-----\n";
 
+/* Has serial number 001 */
+static const char *test_client_key_serial =
+    "-----BEGIN OpenVPN tls-crypt-v2 client key-----\n"
+    "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8gISIjJCUmJygpKissLS4v\n"
+    "MDEyMzQ1Njc4OTo7PD0+P0BBQkNERUZHSElKS0xNTk9QUVJTVFVWV1hZWltcXV5f\n"
+    "YGFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6e3x9fn+AgYKDhIWGh4iJiouMjY6P\n"
+    "kJGSk5SVlpeYmZqbnJ2en6ChoqOkpaanqKmqq6ytrq+wsbKztLW2t7i5uru8vb6/\n"
+    "wMHCw8TFxsfIycrLzM3Oz9DR0tPU1dbX2Nna29zd3t/g4eLj5OXm5+jp6uvs7e7v\n"
+    "8PHy8/T19vf4+fr7/P3+/2ntp1WCqhcLjJQY/igkjNt3Yb6i0neqFkfrOp2UCDcz\n"
+    "6RSJtPLZbvOOKUHk2qwxPYUsFCnz/IWV6/ZiLRrabzUpS8oSN1HS6P7qqAdrHKgf\n"
+    "hVTHasdSf2UdMTPC7HBgnP9Ll0FhKN0h7vSzbbt7QM7wH9mr1ecc/Mt0SYW2lpwA\n"
+    "aJObYGTyk6hTgWm0g/MLrworLrezTqUHBZzVsu+LDyqLWK1lzJNd66MuNOsGA4YF\n"
+    "fbCsDh8n3H+Cw1k5YNBZDYYJOtVUgBWXheO6vgoOmqDdI0dAQ3hVo9DE+SkCFjgf\n"
+    "l4FY2yLEh9ZVZZrl1eD1Owh/X178CkHrBJYl9LNQSyQEKlDGWwBLQ/pY3qtjctr3\n"
+    "pV62MPQdBo+1lcsjDCJVQA6XUyltas4BKQ==\n"
+    "-----END OpenVPN tls-crypt-v2 client key-----\n";
+
 int
 __wrap_parse_line(const char *line, char **p, const int n, const char *file, const int line_num,
                   msglvl_t msglevel, struct gc_arena *gc)
@@ -615,7 +632,7 @@ test_tls_crypt_v2_write_client_key_file(void **state)
     expect_string(__wrap_buffer_read_from_file, filename, filename);
     will_return(__wrap_buffer_read_from_file, test_client_key);
 
-    tls_crypt_v2_write_client_key_file(filename, NULL, test_server_key, true);
+    tls_crypt_v2_write_client_key_file(filename, NULL, NULL, 0, test_server_key, true);
 }
 
 static void
@@ -634,7 +651,26 @@ test_tls_crypt_v2_write_client_key_file_metadata(void **state)
     expect_string(__wrap_buffer_read_from_file, filename, filename);
     will_return(__wrap_buffer_read_from_file, test_client_key_metadata);
 
-    tls_crypt_v2_write_client_key_file(filename, b64metadata, test_server_key, true);
+    tls_crypt_v2_write_client_key_file(filename, b64metadata, NULL, 0, test_server_key, true);
+}
+
+static void
+test_tls_crypt_v2_write_client_key_file_serial(void **state)
+{
+    const char *filename = "testfilename.key";
+    const char *serial = "\x00\x00\x01";
+
+    /* Test writing the client key */
+    expect_string(__wrap_buffer_write_file, filename, filename);
+    expect_memory(__wrap_buffer_write_file, pem, test_client_key_metadata,
+                  strlen(test_client_key_metadata));
+    will_return(__wrap_buffer_write_file, true);
+
+    /* Key generation re-reads the created file as a sanity check */
+    expect_string(__wrap_buffer_read_from_file, filename, filename);
+    will_return(__wrap_buffer_read_from_file, test_client_key_serial);
+
+    tls_crypt_v2_write_client_key_file(filename, NULL, serial, 3, test_server_key, true);
 }
 
 int
@@ -671,6 +707,7 @@ main(void)
         cmocka_unit_test(test_tls_crypt_v2_write_server_key_file),
         cmocka_unit_test(test_tls_crypt_v2_write_client_key_file),
         cmocka_unit_test(test_tls_crypt_v2_write_client_key_file_metadata),
+        cmocka_unit_test(test_tls_crypt_v2_write_client_key_file_serial),
     };
 
 #if defined(ENABLE_CRYPTO_OPENSSL)

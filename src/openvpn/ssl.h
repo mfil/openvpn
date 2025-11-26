@@ -576,4 +576,9 @@ void load_xkey_provider(void);
 bool session_skip_to_pre_start(struct tls_session *session, struct tls_pre_decrypt_state *state,
                                struct link_socket_actual *from);
 
+/**
+ * Read a certificate and write the serial number to out.
+ */
+int ssl_get_serial_number_from_cert_file(struct buffer *out, const char *path, struct gc_arena *gc);
+
 #endif /* ifndef OPENVPN_SSL_H */

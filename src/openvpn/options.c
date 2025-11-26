@@ -650,6 +650,8 @@ static const char usage_message[] =
     "                  client-supplied tls-crypt-v2 client key\n"
     "--tls-crypt-v2-max-age n : Only accept tls-crypt-v2 client keys that have a\n"
     "                  timestamp which is at most n days old.\n"
+    "--tls-crypt-v2-cert cert : Specifies the client certificate of which the serial number\n"
+    "                  is used in generating a tls-crypt-v2 client key.\n"
     "--askpass [file]: Get PEM password from controlling tty before we daemonize.\n"
     "--auth-nocache  : Don't cache --askpass or --auth-user-pass passwords.\n"
     "--crl-verify crl ['dir']: Check peer certificate against a CRL.\n"
@@ -9088,6 +9090,10 @@ add_option(struct options *options, char *p[], bool is_inline, const char *file,
         {
             goto err;
         }
+    }
+    else if (streq(p[0], "tls-crypt-v2-cert") && p[1]) {
+        VERIFY_PERMISSION(OPT_P_GENERAL);
+        options->tls_crypt_v2_client_cert = p[1];
     }
     else if (streq(p[0], "x509-track") && p[1] && !p[2])
     {
