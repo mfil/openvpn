@@ -9185,7 +9185,7 @@ add_option(struct options *options,
          * timeout is already way too much anyway */
         if (options->tls_timeout < 1 || options->tls_timeout > RELIABLE_MAX_INITIAL_TIMEOUT)
         {
-            msg(msglevel, "tls_timeout: Must be an integer between %d and %d, not %lld",
+            msg(msglevel, "tls_timeout: Must be an integer between %d and %d, not %d",
                 1, RELIABLE_MAX_INITIAL_TIMEOUT, options->tls_timeout);
             goto err;
         }
