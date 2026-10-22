@@ -1051,7 +1051,8 @@ do_genkey(const struct options *options)
 
         tls_crypt_v2_write_client_key_file(options->genkey_filename, options->genkey_extra_data,
                                            options->tls_crypt_v2_file,
-                                           options->tls_crypt_v2_file_inline);
+                                           options->tls_crypt_v2_file_inline,
+                                           options->tls_crypt_v2_client_cert);
         return true;
     }
     else if (options->genkey && options->genkey_type == GENKEY_AUTH_TOKEN)
@@ -3439,6 +3440,7 @@ do_init_crypto_tls(struct context *c, const unsigned int flags)
             to.tls_wrap.tls_crypt_v2_server_key = c->c1.ks.tls_crypt_v2_server_key;
             to.tls_crypt_v2_verify_script = c->options.tls_crypt_v2_verify_script;
             to.tls_crypt_v2_max_age = c->options.tls_crypt_v2_max_age;
+            to.tls_crypt_v2_crl_verify = c->options.tls_crypt_v2_crl_verify;
             if (options->ce.tls_crypt_v2_force_cookie)
             {
                 to.tls_wrap.opt.flags |= CO_FORCE_TLSCRYPTV2_COOKIE;

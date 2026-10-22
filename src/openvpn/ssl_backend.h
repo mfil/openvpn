@@ -546,4 +546,15 @@ void show_available_curves(void);
  */
 const char *get_ssl_library_version(void);
 
+/**
+ * Check if a serial number is on the certificate revocation list (CRL).
+ *
+ * @param ssl_ctx     Context.
+ * @param serial      The serial number to check.
+ * @param serial_len  The length of serial.
+ *
+ * @returns true if the serial number has been revoked.
+ */
+bool is_serial_revoked(const struct tls_root_ctx *ssl_ctx, const uint8_t *serial, size_t serial_len);
+
 #endif /* SSL_BACKEND_H_ */

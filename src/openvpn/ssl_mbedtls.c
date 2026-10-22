@@ -1576,4 +1576,28 @@ load_xkey_provider(void)
     return; /* no external key provider in mbedTLS build */
 }
 
+bool
+is_serial_revoked(const struct tls_root_ctx *ssl_ctx, const uint8_t *serial, size_t serial_len)
+{
+    const mbedtls_x509_crl *crl = ssl_ctx->crl;
+    while (crl != NULL)
+    {
+        const mbedtls_x509_crl_entry *entry = &crl->entry;
+        while (entry != NULL)
+        {
+            if (serial_len == entry->serial.len)
+            {
+                if (memcmp(serial, entry->serial.p, serial_len) == 0)
+                {
+                    return true;
+                }
+            }
+            entry = entry->next;
+        }
+        crl = crl->next;
+    }
+
+    return false;
+}
+
 #endif /* defined(ENABLE_CRYPTO_MBEDTLS) */

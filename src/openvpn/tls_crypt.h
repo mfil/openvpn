@@ -222,9 +222,14 @@ void tls_crypt_v2_write_server_key_file(const char *filename);
  *                          client key or the key itself if key_inline is true.
  * @param key_inline        True if key_file contains an inline key, False
  *                          otherwise.
+ * @param client_cert_path  Path to a client certificate whose serial number
+ *                          is included in the metadata, or NULL.
  */
-void tls_crypt_v2_write_client_key_file(const char *filename, const char *b64_metadata,
-                                        const char *key_file, bool key_inline);
+void tls_crypt_v2_write_client_key_file(const char *filename,
+                                        const char *b64_metadata,
+                                        const char *key_file,
+                                        bool key_inline,
+                                        const char *client_cert_path);
 
 /** @} */
 

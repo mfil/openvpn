@@ -673,6 +673,15 @@ struct options
     const char *tls_crypt_v2_file;
     bool tls_crypt_v2_file_inline;
 
+    /* Client certificate file for serial number */
+    const char *tls_crypt_v2_client_cert;
+
+    /* Serial number blacklist */
+    bool tls_crypt_v2_crl_verify;
+
+    /* Verify that the clients connecting to the server are generated at most x days ago */
+    int tls_crypt_v2_client_max_age;
+
     const char *tls_crypt_v2_metadata;
 
     const char *tls_crypt_v2_verify_script;

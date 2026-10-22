@@ -655,6 +655,10 @@ static const char usage_message[] =
     "                  client-supplied tls-crypt-v2 client key\n"
     "--tls-crypt-v2-max-age n : Only accept tls-crypt-v2 client keys that have a\n"
     "                  timestamp which is at most n days old.\n"
+    "--tls-crypt-v2-verify-crl : Verifies client authorization by serial\n"
+    "                  number through revoke list in tls-crypt, uses PEM file from --crl-verify\n"
+    "--tls-crypt-v2-cert cert : Specifies the client certificate of which the serial number\n"
+    "                  is used in generating a tls-crypt-v2 client key.\n"
     "--askpass [file]: Get PEM password from controlling tty before we daemonize.\n"
     "--auth-nocache  : Don't cache --askpass or --auth-user-pass passwords.\n"
     "--crl-verify crl ['dir']: Check peer certificate against a CRL.\n"
@@ -2180,6 +2184,10 @@ options_postprocess_verify_ce(const struct options *options, const struct connec
         {
             msg(M_USAGE,
                 "--tls-crypt-v2, --tls-auth and --tls-crypt are mutually exclusive in client mode");
+        }
+        if (options->tls_crypt_v2_verify_script && (options->tls_crypt_v2_client_max_age > 0 || options->tls_crypt_v2_crl_verify))
+        {
+            msg(M_USAGE, "--tls-crypt-v2-verify with --tls-crypt-v2-max-age or --tls-crypt-v2-verify-crl are mutually exclusive");
         }
     }
     else
@@ -7698,6 +7706,14 @@ add_option(struct options *options, char *p[], bool is_inline, const char *file,
         {
             goto err;
         }
+    }
+    else if (streq(p[0], "tls-crypt-v2-verify-crl")) {
+        VERIFY_PERMISSION(OPT_P_GENERAL);
+        options->tls_crypt_v2_crl_verify = true;
+    }
+    else if (streq(p[0], "tls-crypt-v2-cert") && p[1]) {
+        VERIFY_PERMISSION(OPT_P_GENERAL);
+        options->tls_crypt_v2_client_cert = p[1];
     }
     else if (streq(p[0], "x509-track") && p[1] && !p[2])
     {

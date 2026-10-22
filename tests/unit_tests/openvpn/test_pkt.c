@@ -53,7 +53,7 @@ parse_line(const char *line, char **p, const int n, const char *file, const int 
     return 0;
 }
 
-/* Define this function here as dummy since including the ssl_*.c files
+/* Define these functions here as dummy since including the ssl_*.c files
  * leads to having to include even more unrelated code */
 bool
 key_state_export_keying_material(struct tls_session *session, const char *label, size_t label_size,
@@ -66,6 +66,12 @@ const char *
 print_link_socket_actual(const struct link_socket_actual *act, struct gc_arena *gc)
 {
     return "dummy print_link_socket_actual from unit test";
+}
+
+bool
+is_serial_revoked(const struct tls_root_ctx *ssl_ctx, const uint8_t *serial, size_t serial_len)
+{
+    return false;
 }
 
 const char static_key[] = "<tls-auth>\n"

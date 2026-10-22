@@ -36,7 +36,7 @@
 #include "test_common.h"
 #include "tls_crypt.c"
 
-/* Define this function here as dummy since including the ssl_*.c files
+/* Define these functions here as dummy since including the ssl_*.c files
  * leads to having to include even more unrelated code */
 bool
 key_state_export_keying_material(struct tls_session *session, const char *label, size_t label_size,
@@ -46,6 +46,12 @@ key_state_export_keying_material(struct tls_session *session, const char *label,
     return true;
 }
 
+
+bool
+is_serial_revoked(const struct tls_root_ctx *ssl_ctx, const uint8_t *serial, size_t serial_len)
+{
+    return false;
+}
 
 #define TESTBUF_SIZE 128
 
@@ -799,7 +805,7 @@ test_tls_crypt_v2_write_client_key_file(void **state)
     expect_string(__wrap_buffer_read_from_file, filename, filename);
     will_return(__wrap_buffer_read_from_file, test_client_key);
 
-    tls_crypt_v2_write_client_key_file(filename, NULL, test_server_key, true);
+    tls_crypt_v2_write_client_key_file(filename, NULL, test_server_key, true, NULL);
 }
 
 static void
@@ -818,7 +824,7 @@ test_tls_crypt_v2_write_client_key_file_metadata(void **state)
     expect_string(__wrap_buffer_read_from_file, filename, filename);
     will_return(__wrap_buffer_read_from_file, test_client_key_metadata);
 
-    tls_crypt_v2_write_client_key_file(filename, b64metadata, test_server_key, true);
+    tls_crypt_v2_write_client_key_file(filename, b64metadata, test_server_key, true, NULL);
 }
 
 int

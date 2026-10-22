@@ -34,6 +34,7 @@
 #include "run_command.h"
 #include "session_id.h"
 #include "ssl.h"
+#include "ssl_backend.h"
 #include "buffer.h"
 
 #include "tls_crypt.h"
@@ -45,6 +46,9 @@ const char *tls_crypt_v2_srv_pem_name = "OpenVPN tls-crypt-v2 server key";
 static const uint8_t TLS_CRYPT_METADATA_TYPE_USER = 0x00;
 /** Metadata contains a 64-bit unix timestamp in network byte order */
 static const uint8_t TLS_CRYPT_METADATA_TYPE_TIMESTAMP = 0x01;
+/** Metadata contains a 64-bit unix timestamp in network byte order,
+ *  and an SSL certificate serial number of X but < 20 bytes */
+static const uint8_t TLS_CRYPT_METADATA_TYPE_TIME_AND_SERIAL = 0x02;
 
 static struct key_type
 tls_crypt_kt(void)
@@ -530,7 +534,8 @@ tls_crypt_v2_check_client_key_age(const struct buffer *tls_crypt_v2_metadata, in
     }
 
     const uint8_t *metadata = CBPTR(tls_crypt_v2_metadata);
-    if (*metadata != TLS_CRYPT_METADATA_TYPE_TIMESTAMP)
+    if (*metadata != TLS_CRYPT_METADATA_TYPE_TIMESTAMP
+        && *metadata != TLS_CRYPT_METADATA_TYPE_TIME_AND_SERIAL)
     {
         msg(M_WARN, "ERROR: Client key does not have a timestamp.");
         return false;
@@ -606,6 +611,37 @@ cleanup:
     return ret;
 }
 
+static bool
+tls_crypt_v2_check_client_key_serial(struct buffer *tls_crypt_v2_metadata, const struct tls_options *opt)
+{
+    if (tls_crypt_v2_metadata->len < 1 + (int)sizeof(int64_t) + 1)
+    {
+        msg(M_WARN,
+            "ERROR: Client key metadata is too small to contain a timestamp and serial number.");
+        return false;
+    }
+
+    uint8_t metadata_type = tls_crypt_v2_metadata->data[0];
+    if (metadata_type != TLS_CRYPT_METADATA_TYPE_TIME_AND_SERIAL)
+    {
+        msg(M_WARN, "ERROR: Incorrect metadata type for tls-crypt-v2-verify-crl.");
+        return false;
+    }
+
+    /* We can calculate the serial length by subtracting the length of the
+     * timestamp and type from the total buffer. */
+    size_t serial_len = tls_crypt_v2_metadata->len - sizeof(int64_t) - sizeof(uint8_t);
+    const uint8_t *serial = tls_crypt_v2_metadata->data + sizeof(int64_t) + sizeof(uint8_t);
+
+    /* Check if the serial number of the client is revoked. */
+    int revoked = is_serial_revoked(opt->ssl_ctx, serial, serial_len);
+    if (revoked)
+    {
+        msg(D_TLS_ERRORS, "tls-crypt-v2 client key serial number is revoked.");
+    }
+    return !revoked;
+}
+
 bool
 tls_crypt_v2_extract_client_key(struct buffer *buf, struct tls_wrap_ctx *ctx,
                                 const struct tls_options *opt)
@@ -670,7 +706,11 @@ tls_crypt_v2_extract_client_key(struct buffer *buf, struct tls_wrap_ctx *ctx,
     {
         goto error;
     }
-
+    if (opt && opt->tls_crypt_v2_crl_verify
+        && !tls_crypt_v2_check_client_key_serial(&tls_crypt_v2_metadata, opt))
+    {
+        goto error;
+    }
     if (opt && opt->tls_crypt_v2_verify_script && !tls_crypt_v2_verify_metadata(&tls_crypt_v2_metadata, opt))
     {
         goto error;
@@ -701,8 +741,11 @@ tls_crypt_v2_write_server_key_file(const char *filename)
 }
 
 void
-tls_crypt_v2_write_client_key_file(const char *filename, const char *b64_metadata,
-                                   const char *server_key_file, bool server_key_inline)
+tls_crypt_v2_write_client_key_file(const char *filename,
+                                   const char *b64_metadata,
+                                   const char *server_key_file,
+                                   bool server_key_inline,
+                                   const char *client_cert_path)
 {
     struct gc_arena gc = gc_new();
     struct key_ctx server_key = { 0 };
@@ -716,6 +759,12 @@ tls_crypt_v2_write_client_key_file(const char *filename, const char *b64_metadat
         goto cleanup;
     }
     ASSERT(buf_write(&dst, client_key.keys, sizeof(client_key.keys)));
+
+    if (b64_metadata && client_cert_path)
+    {
+        msg(M_FATAL, "ERROR: metadata source conflict. Specify either user-defined metadata or a certificate, not both");
+        goto cleanup;
+    }
 
     struct buffer metadata;
     if (b64_metadata)
@@ -739,10 +788,32 @@ tls_crypt_v2_write_client_key_file(const char *filename, const char *b64_metadat
     }
     else
     {
-        metadata = alloc_buf_gc(1 + sizeof(int64_t), &gc);
+        mbedtls_x509_crt cert;
+        size_t buf_len = 1 + sizeof(int64_t);
+
+        if (client_cert_path)
+        {
+            mbedtls_x509_crt_init(&cert);
+
+            if (mbedtls_x509_crt_parse_file(&cert, client_cert_path) != 0)
+            {
+                msg(M_FATAL, "Failed to parse certificate file: %s\n", client_cert_path);
+                goto cleanup;
+            }
+
+            buf_len += cert.serial.len;
+        }
+
+        metadata = alloc_buf_gc(buf_len, &gc);
         int64_t timestamp = htonll((uint64_t)now);
-        ASSERT(buf_write(&metadata, &TLS_CRYPT_METADATA_TYPE_TIMESTAMP, 1));
+        uint8_t metadata_type = client_cert_path ? TLS_CRYPT_METADATA_TYPE_TIME_AND_SERIAL : TLS_CRYPT_METADATA_TYPE_TIMESTAMP;
+        ASSERT(buf_write(&metadata, &metadata_type, sizeof(uint8_t)));
         ASSERT(buf_write(&metadata, &timestamp, sizeof(timestamp)));
+
+        if (client_cert_path)
+        {
+            ASSERT(buf_write(&metadata, cert.serial.p, cert.serial.len));
+        }
     }
 
     tls_crypt_v2_init_server_key(&server_key, true, server_key_file, server_key_inline);
